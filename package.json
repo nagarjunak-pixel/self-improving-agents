@@ -1,0 +1,9 @@
+{
+  "name": "self-improving-agents",
+  "version": "0.1.0",
+  "description": "Self-Improving Multi-Agent System — teaching framework for advanced agentic AI",
+  "license": "MIT",
+  "scripts": {
+    "build": "echo 'No build needed'"
+  }
+}

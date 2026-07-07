@@ -3,7 +3,13 @@
   functions = "netlify/functions"
   publish = "web/static"
 
-# SPA fallback — serve index.html for all routes
+# Let API calls through to functions (before the SPA catch-all)
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# SPA fallback — serve index.html for all routes (except functions)
 [[redirects]]
   from = "/*"
   to = "/index.html"
