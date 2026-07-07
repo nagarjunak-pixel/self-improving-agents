@@ -420,7 +420,7 @@
         ['node-planner','node-worker','node-critic','node-reflexion','node-judge'].forEach(n => highlightNode(n, false));
 
         try {
-            const response = await fetch('/api/agent_api', {
+            const response = await fetch('/api/agent-api', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ task, model, max_reflections: maxReflections, api_key: apiKey })
