@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧠 Self-Improving Multi-Agent System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg: #0a0e1a;
+            --surface: #131829;
+            --surface-light: #1a2040;
+            --primary: #4ade80;
+            --primary-dim: #22c55e;
+            --accent: #38bdf8;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --magenta: #c084fc;
+            --text: #e2e8f0;
+            --text-dim: #64748b;
+            --border: #1e293b;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* HEADER */
+        .header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            padding: 2rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+        .header h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .header p { color: var(--text-dim); font-size: 0.95rem; }
+        .header .badges { margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+        .badge {
+            background: var(--surface-light);
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            border: 1px solid var(--border);
+        }
+
+        /* LAYOUT */
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
+
+        /* TASK INPUT */
+        .task-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .task-section h2 { font-size: 1.2rem; margin-bottom: 1rem; }
+        .task-input-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+        .task-input {
+            flex: 1;
+            min-width: 300px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            color: var(--text);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .task-input:focus { border-color: var(--accent); }
+        .run-btn {
+            background: var(--primary-dim);
+            color: #0a0e1a;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 2rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .run-btn:hover { background: var(--primary); transform: translateY(-1px); }
+        .run-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .config-row { display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap; }
+        .config-item { display: flex; flex-direction: column; gap: 0.25rem; }
+        .config-item label { font-size: 0.8rem; color: var(--text-dim); }
+        .config-item select, .config-item input {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.4rem 0.6rem;
+            color: var(--text);
+            font-size: 0.85rem;
+            outline: none;
+        }
+
+        /* ARCHITECTURE DIAGRAM */
+        .arch {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            overflow-x: auto;
+        }
+        .arch h2 { font-size: 1.2rem; margin-bottom: 1rem; }
+        .arch-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            min-width: 600px;
+        }
+        .arch-node {
+            background: var(--surface-light);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            text-align: center;
+            min-width: 120px;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+        }
+        .arch-node.active {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(74, 222, 128, 0.2);
+        }
+        .arch-node .icon { font-size: 1.2rem; display: block; margin-bottom: 0.25rem; }
+        .arch-node .label { font-weight: 600; }
+        .arch-node .desc { font-size: 0.75rem; color: var(--text-dim); margin-top: 0.2rem; }
+        .arch-arrow { color: var(--text-dim); font-size: 1.2rem; }
+
+        /* TRACE LOG */
+        .trace-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .trace-section h2 { font-size: 1.2rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .trace-log {
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.82rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .trace-entry {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            border-left: 3px solid;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .trace-think { border-color: var(--accent); background: rgba(56, 189, 248, 0.05); }
+        .trace-act { border-color: var(--warning); background: rgba(251, 191, 36, 0.05); }
+        .trace-observe { border-color: var(--primary); background: rgba(74, 222, 128, 0.05); }
+        .trace-reflect { border-color: var(--magenta); background: rgba(192, 132, 252, 0.05); }
+        .trace-error { border-color: var(--danger); background: rgba(248, 113, 113, 0.05); }
+        .trace-success { border-color: var(--primary); background: rgba(74, 222, 128, 0.1); }
+        .trace-entry .meta { font-size: 0.7rem; color: var(--text-dim); margin-bottom: 0.25rem; }
+        .trace-entry .content { color: var(--text); }
+        .trace-entry .data { margin-top: 0.4rem; color: var(--text-dim); font-size: 0.75rem; }
+
+        /* RESULTS */
+        .results-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .results-section h2 { font-size: 1.2rem; margin-bottom: 1rem; }
+        .subtask-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+        .subtask-table th, .subtask-table td {
+            padding: 0.6rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+        .subtask-table th { color: var(--text-dim); font-weight: 600; font-size: 0.8rem; }
+        .status-approved { color: var(--primary); }
+        .status-failed { color: var(--danger); }
+
+        .final-answer {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            white-space: pre-wrap;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        /* REFLEXION PANEL */
+        .reflexion-panel {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(192, 132, 252, 0.05);
+            border: 1px solid rgba(192, 132, 252, 0.2);
+            border-radius: 8px;
+        }
+        .reflexion-panel h3 { font-size: 0.95rem; color: var(--magenta); margin-bottom: 0.5rem; }
+        .reflexion-round { margin-bottom: 0.75rem; padding-left: 1rem; border-left: 2px solid rgba(192, 132, 252, 0.3); }
+        .reflexion-round .round-label { font-size: 0.8rem; color: var(--text-dim); }
+        .reflexion-round .round-text { font-size: 0.85rem; color: var(--text); margin-top: 0.2rem; }
+
+        /* EMPTY STATE */
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-dim);
+        }
+        .empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+
+        /* SPINNER */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* FOOTER */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            border-top: 1px solid var(--border);
+        }
+        .footer a { color: var(--accent); text-decoration: none; }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.4rem; }
+            .container { padding: 1rem 0.5rem; }
+            .arch-flow { min-width: auto; flex-direction: column; }
+            .arch-arrow { transform: rotate(90deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🧠 Self-Improving Multi-Agent System</h1>
+    <p>Watch agents plan, execute, critique, reflect, and improve — in real time</p>
+    <div class="badges">
+        <span class="badge">ReAct Loop</span>
+        <span class="badge">Reflexion</span>
+        <span class="badge">Multi-Agent</span>
+        <span class="badge">Adversarial Critic</span>
+        <span class="badge">Agent-as-a-Judge</span>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- TASK INPUT -->
+    <div class="task-section">
+        <h2>📝 Task Input</h2>
+        <div class="task-input-row">
+            <input type="text" class="task-input" id="taskInput" 
+                placeholder="Enter a task for the agent system..."
+                value="Design a REST API for a todo application with user authentication, including database schema, endpoint list, and security considerations.">
+            <button class="run-btn" id="runBtn" onclick="runTask()">▶ Run Agents</button>
+        </div>
+        <div class="config-row">
+            <div class="config-item">
+                <label>Model</label>
+                <select id="modelSelect">
+                    <option value="gpt-4o">gpt-4o</option>
+                    <option value="gpt-4o-mini">gpt-4o-mini (cheaper)</option>
+                </select>
+            </div>
+            <div class="config-item">
+                <label>Max Reflections</label>
+                <select id="reflectionsSelect">
+                    <option value="0">0 (no reflexion)</option>
+                    <option value="1">1</option>
+                    <option value="2" selected>2</option>
+                    <option value="3">3</option>
+                </select>
+            </div>
+            <div class="config-item">
+                <label>API Key</label>
+                <input type="password" id="apiKeyInput" placeholder="OpenAI API Key" />
+            </div>
+        </div>
+    </div>
+
+    <!-- ARCHITECTURE -->
+    <div class="arch">
+        <h2>🏗️ System Architecture</h2>
+        <div class="arch-flow" id="archFlow">
+            <div class="arch-node" id="node-planner"><span class="icon">📋</span><span class="label">Planner</span><span class="desc">Decomposes task</span></div>
+            <span class="arch-arrow">→</span>
+            <div class="arch-node" id="node-worker"><span class="icon">🔧</span><span class="label">Workers</span><span class="desc">Execute subtasks</span></div>
+            <span class="arch-arrow">→</span>
+            <div class="arch-node" id="node-critic"><span class="icon">🔍</span><span class="label">Critic</span><span class="desc">Adversarial review</span></div>
+            <span class="arch-arrow">→</span>
+            <div class="arch-node" id="node-reflexion"><span class="icon">🔄</span><span class="label">Reflexion</span><span class="desc">Learn & retry</span></div>
+            <span class="arch-arrow">→</span>
+            <div class="arch-node" id="node-judge"><span class="icon">⚖️</span><span class="label">Judge</span><span class="desc">Final synthesis</span></div>
+        </div>
+    </div>
+
+    <!-- TRACE LOG -->
+    <div class="trace-section">
+        <h2>📡 Agent Trace <span id="traceSpinner" style="display:none;"><span class="spinner"></span></span></h2>
+        <div class="trace-log" id="traceLog">
+            <div class="empty-state">
+                <div class="icon">🧠</div>
+                <p>Enter a task and click "Run Agents" to watch the system think in real time.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="results-section" id="resultsSection" style="display:none;">
+        <h2>✅ Results</h2>
+        <table class="subtask-table" id="subtaskTable">
+            <thead><tr><th>#</th><th>Subtask</th><th>Reflections</th><th>Status</th></tr></thead>
+            <tbody id="subtaskBody"></tbody>
+        </table>
+        <div class="reflexion-panel" id="reflexionPanel" style="display:none;">
+            <h3>📝 Reflexion Details</h3>
+            <div id="reflexionContent"></div>
+        </div>
+        <h3 style="margin-top:1.5rem;margin-bottom:0.75rem;">Final Answer</h3>
+        <div class="final-answer" id="finalAnswer"></div>
+    </div>
+
+</div>
+
+<div class="footer">
+    <p>Self-Improving Multi-Agent System · Built for teaching advanced agentic AI</p>
+    <p style="margin-top:0.5rem;"><a href="https://github.com" target="_blank" id="repoLink">View on GitHub</a> · <a href="https://docs.openclaw.ai" target="_blank">Powered by OpenClaw</a></p>
+</div>
+
+<script>
+    let eventSource = null;
+
+    function highlightNode(nodeId, active) {
+        const node = document.getElementById(nodeId);
+        if (node) {
+            if (active) node.classList.add('active');
+            else node.classList.remove('active');
+        }
+    }
+
+    function addTraceEntry(type, agent, content, data, elapsed) {
+        const log = document.getElementById('traceLog');
+        
+        // Remove empty state
+        const empty = log.querySelector('.empty-state');
+        if (empty) empty.remove();
+
+        const entry = document.createElement('div');
+        entry.className = `trace-entry trace-${type}`;
+        
+        const typeLabels = {
+            think: '🧠 THINK', act: '🔧 ACT', observe: '👁️ OBSERVE',
+            reflect: '🪞 REFLECT', plan: '📋 PLAN', decide: '⚖️ DECIDE',
+            error: '❌ ERROR', success: '✅ SUCCESS', reflexion: '🔄 REFLEXION'
+        };
+
+        let html = `<div class="meta">${agent} · ${typeLabels[type] || type} · ${elapsed}s</div>`;
+        html += `<div class="content">${content}</div>`;
+        if (data && Object.keys(data).length > 0) {
+            html += `<div class="data">${JSON.stringify(data, null, 2).substring(0, 300)}</div>`;
+        }
+        entry.innerHTML = html;
+        log.appendChild(entry);
+        log.scrollTop = log.scrollHeight;
+
+        // Highlight architecture nodes based on agent
+        if (agent.includes('Planner')) highlightNode('node-planner', true);
+        else if (agent.includes('Worker')) highlightNode('node-worker', true);
+        else if (agent.includes('Critic')) highlightNode('node-critic', true);
+        else if (agent.includes('Reflexion')) highlightNode('node-reflexion', true);
+        else if (agent.includes('Judge')) highlightNode('node-judge', true);
+    }
+
+    async function runTask() {
+        const task = document.getElementById('taskInput').value.trim();
+        const model = document.getElementById('modelSelect').value;
+        const maxReflections = parseInt(document.getElementById('reflectionsSelect').value);
+        const apiKey = document.getElementById('apiKeyInput').value.trim();
+
+        if (!task) { alert('Please enter a task'); return; }
+        if (!apiKey) { alert('Please enter your OpenAI API Key'); return; }
+
+        // Reset UI
+        document.getElementById('traceLog').innerHTML = '';
+        document.getElementById('resultsSection').style.display = 'none';
+        document.getElementById('runBtn').disabled = true;
+        document.getElementById('runBtn').textContent = '⏳ Running...';
+        document.getElementById('traceSpinner').style.display = 'inline-block';
+        ['node-planner','node-worker','node-critic','node-reflexion','node-judge'].forEach(n => highlightNode(n, false));
+
+        try {
+            const response = await fetch('/.netlify/functions/agent-api', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ task, model, max_reflections: maxReflections, api_key: apiKey })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop(); // Keep incomplete line in buffer
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+                            handleStreamEvent(data);
+                        } catch(e) { /* skip malformed */ }
+                    }
+                }
+            }
+
+            // Process any remaining buffer
+            if (buffer.startsWith('data: ')) {
+                try { handleStreamEvent(JSON.parse(buffer.slice(6))); } catch(e) {}
+            }
+
+        } catch (error) {
+            addTraceEntry('error', 'System', `Error: ${error.message}`, {}, 0);
+        } finally {
+            document.getElementById('runBtn').disabled = false;
+            document.getElementById('runBtn').textContent = '▶ Run Agents';
+            document.getElementById('traceSpinner').style.display = 'none';
+            ['node-planner','node-worker','node-critic','node-reflexion','node-judge'].forEach(n => highlightNode(n, false));
+        }
+    }
+
+    function handleStreamEvent(event) {
+        switch(event.type) {
+            case 'trace':
+                addTraceEntry(event.step_type, event.agent, event.content, event.data, event.elapsed);
+                break;
+            case 'result':
+                showResults(event.data);
+                break;
+            case 'error':
+                addTraceEntry('error', 'System', event.message, {}, 0);
+                break;
+        }
+    }
+
+    function showResults(data) {
+        const section = document.getElementById('resultsSection');
+        section.style.display = 'block';
+
+        // Subtask table
+        const tbody = document.getElementById('subtaskBody');
+        tbody.innerHTML = '';
+        data.worker_outputs.forEach((w, i) => {
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td>${i+1}</td>
+                <td>${w.subtask.substring(0, 60)}${w.subtask.length > 60 ? '...' : ''}</td>
+                <td>${w.total_reflections}</td>
+                <td class="${w.approved ? 'status-approved' : 'status-failed'}">${w.approved ? '✅ Approved' : '❌ Failed'}</td>
+            `;
+        });
+
+        // Reflexion details
+        const reflexPanel = document.getElementById('reflexionPanel');
+        const reflexContent = document.getElementById('reflexionContent');
+        let hasReflexions = false;
+        reflexContent.innerHTML = '';
+
+        for (const w of data.worker_outputs) {
+            if (w.total_reflections > 0) {
+                hasReflexions = true;
+                reflexContent.innerHTML += `<div style="font-size:0.85rem;font-weight:600;margin-bottom:0.5rem;">${w.subtask.substring(0, 50)}...</div>`;
+                w.attempts.forEach((a, j) => {
+                    if (a.reflection) {
+                        reflexContent.innerHTML += `
+                            <div class="reflexion-round">
+                                <div class="round-label">Round ${j+1} Reflection</div>
+                                <div class="round-text">${a.reflection}</div>
+                            </div>`;
+                    }
+                });
+            }
+        }
+        reflexPanel.style.display = hasReflexions ? 'block' : 'none';
+
+        // Final answer
+        document.getElementById('finalAnswer').textContent = data.final_answer;
+    }
+
+    // Enter key triggers run
+    document.getElementById('taskInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runTask(); }
+    });
+    document.getElementById('apiKeyInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); runTask(); }
+    });
+</script>
+
+</body>
+</html>
