@@ -55,21 +55,33 @@ def main():
         action="store_true",
         help="Disable built-in tools (pure reasoning mode)",
     )
+    parser.add_argument(
+        "--provider",
+        type=str,
+        default="openai",
+        choices=["openai", "openrouter"],
+        help="LLM provider: openai (default) or openrouter (100+ models)",
+    )
     args = parser.parse_args()
 
     # --- HEADER ---
     console.print(Panel.fit(
         f"[bold cyan]🧠 Self-Improving Multi-Agent System[/]\n\n"
         f"[dim]Model: {args.model}\n"
+        f"Provider: {args.provider}\n"
         f"Max Reflexions: {args.max_reflections}\n"
         f"Tools: {'disabled' if args.no_tools else 'builtin (calculator, word_count, etc.)'}[/]",
         border_style="cyan",
     ))
 
     # --- CHECK API KEY ---
-    if not os.environ.get("OPENAI_API_KEY"):
-        console.print("[red]ERROR: OPENAI_API_KEY not set. Export it first:[/]")
-        console.print("  export OPENAI_API_KEY=\"sk-...\"")
+    env_key = "OPENROUTER_API_KEY" if args.provider == "openrouter" else "OPENAI_API_KEY"
+    api_key = os.environ.get(env_key)
+    if not api_key:
+        console.print(f"[red]ERROR: {env_key} not set. Export it first:[/]")
+        console.print(f"  export {env_key}=\"sk-...\"")
+        if args.provider == "openrouter":
+            console.print("[dim]Get your OpenRouter key at: https://openrouter.ai/keys[/]")
         sys.exit(1)
 
     # --- IMPORTS (deferred until after API key check) ---
@@ -87,6 +99,8 @@ def main():
         tools=tools,
         long_term_memory=long_term_memory,
         max_reflections=args.max_reflections,
+        api_key=api_key,
+        provider=args.provider,
     )
 
     # --- RUN ---

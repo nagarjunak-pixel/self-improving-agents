@@ -36,6 +36,39 @@ from core.tools import ToolRegistry
 from core.trace import TraceLogger, TraceStepType
 
 
+def create_client(api_key: str = None, base_url: str = None, provider: str = "openai"):
+    """
+    Create an LLM client that works with OpenAI, OpenRouter, or any compatible provider.
+
+    PROVIDERS:
+    - "openai":    OpenAI official API (default)
+    - "openrouter": OpenRouter — access 100+ models (Claude, GPT, Llama, etc.)
+    - custom:     Any OpenAI-compatible endpoint (vLLM, Together, etc.)
+
+    WHY THIS EXISTS:
+    OpenRouter uses the exact same API format as OpenAI, just with a different base_url.
+    This function abstracts the setup so agents don't care which provider they use.
+
+    USAGE:
+        # OpenAI (default)
+        client = create_client(api_key="sk-...")
+
+        # OpenRouter (access Claude, GPT, Llama, etc.)
+        client = create_client(api_key="sk-or-...", provider="openrouter")
+
+        # Custom endpoint
+        client = create_client(api_key="...", base_url="https://my-server.com/v1")
+    """
+    if base_url:
+        return OpenAI(api_key=api_key, base_url=base_url)
+    if provider == "openrouter":
+        return OpenAI(
+            api_key=api_key or "",
+            base_url="https://openrouter.ai/api/v1",
+        )
+    return OpenAI(api_key=api_key)
+
+
 class BaseAgent:
     """
     The base agent. All specialized agents (Planner, Worker, Critic, Judge)
@@ -63,13 +96,15 @@ class BaseAgent:
         long_term_memory: Optional[LongTermMemory] = None,
         max_iterations: int = 10,
         client: Optional[OpenAI] = None,
+        api_key: str = None,
+        provider: str = "openai",
     ):
         self.name = name
         self.model = model
         self.tools = tools or ToolRegistry()
         self.long_term_memory = long_term_memory
         self.max_iterations = max_iterations
-        self.client = client or OpenAI()
+        self.client = client or create_client(api_key=api_key, provider=provider)
         self.trace = TraceLogger(agent_name=name)
 
         # Inject lessons from long-term memory into system prompt

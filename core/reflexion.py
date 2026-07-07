@@ -38,6 +38,7 @@ from typing import Optional
 from openai import OpenAI
 
 from core.agent import BaseAgent
+from core.agent import create_client
 from core.memory import LongTermMemory
 from core.trace import TraceLogger, TraceStepType
 
@@ -57,11 +58,13 @@ class ReflexionEngine:
         max_reflections: int = 3,
         model: str = "gpt-4o",
         client: Optional[OpenAI] = None,
+        api_key: str = None,
+        provider: str = "openai",
     ):
         self.agent = agent
         self.max_reflections = max_reflections
         self.model = model
-        self.client = client or OpenAI()
+        self.client = client or create_client(api_key=api_key, provider=provider)
         self.reflection_trace = TraceLogger(agent_name=f"Reflexion-{agent.name}")
 
     def _generate_reflection(self, task: str, attempt: str, feedback: str) -> str:

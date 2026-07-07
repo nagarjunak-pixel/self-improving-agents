@@ -74,12 +74,16 @@ Generate a CONCISE reflection (2-4 sentences) answering:
 Be specific. Output ONLY the reflection, no preamble.`;
 
 // --- HELPER: Call OpenAI ---
-async function callLLM(apiKey, model, systemPrompt, userMessage) {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+async function callLLM(apiKey, model, systemPrompt, userMessage, provider = 'openai') {
+  const baseUrl = provider === 'openrouter' 
+    ? 'https://openrouter.ai/api/v1/chat/completions'
+    : 'https://api.openai.com/v1/chat/completions';
+  const response = await fetch(baseUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
+      ...(provider === 'openrouter' && { 'HTTP-Referer': 'https://warm-zabaione-bee182.netlify.app' }),
     },
     body: JSON.stringify({
       model: model,
@@ -131,6 +135,7 @@ exports.handler = async (event, context) => {
     const model = body.model || 'gpt-4o';
     const maxReflections = body.max_reflections !== undefined ? body.max_reflections : 2;
     const apiKey = body.api_key || '';
+    const provider = body.provider || 'openai';
 
     if (!task) {
       return { statusCode: 400, body: JSON.stringify({ error: 'No task provided' }) };
@@ -156,7 +161,7 @@ exports.handler = async (event, context) => {
     // --- STEP 1: PLAN ---
     logTrace('plan', 'Planner', `Decomposing: ${task}`);
     logTrace('think', 'Planner', 'Asking Planner to decompose task...');
-    const planRaw = await callLLM(apiKey, model, PLANNER_PROMPT, task);
+    const planRaw = await callLLM(apiKey, model, PLANNER_PROMPT, task, provider);
     const subtasks = parsePlan(planRaw);
     logTrace('success', 'Planner', `Decomposed into ${subtasks.length} subtasks`, { subtasks: subtasks.map(s => s.task) });
 
@@ -179,13 +184,13 @@ exports.handler = async (event, context) => {
         logTrace('think', workerName, `Attempt ${round + 1} for: ${subtaskDesc.substring(0, 60)}...`);
 
         // Run worker
-        answer = await callLLM(apiKey, model, WORKER_PROMPT, currentTask);
+        answer = await callLLM(apiKey, model, WORKER_PROMPT, currentTask, provider);
         logTrace('observe', workerName, `Produced ${answer.length} chars`);
 
         // Evaluate with critic
         logTrace('decide', 'Critic', `Evaluating work for: ${subtaskDesc.substring(0, 60)}...`);
         const criticInput = `## Original Task:\n${subtaskDesc}\n\n## Work to Evaluate:\n${answer}\n\nNow evaluate it.`;
-        const criticResult = await callLLM(apiKey, model, CRITIC_PROMPT, criticInput);
+        const criticResult = await callLLM(apiKey, model, CRITIC_PROMPT, criticInput, provider);
         const isApproved = criticResult.trim().toUpperCase().startsWith('APPROVED');
 
         if (isApproved) {
@@ -199,8 +204,8 @@ exports.handler = async (event, context) => {
 
         // Generate reflection
         logTrace('reflect', `Reflexion-${workerName}`, `Generating reflection for round ${round + 1}...`);
-        const reflection = await callLLM(apiKey, model, 'You are a reflection engine.', 
-          REFLECTION_PROMPT(subtaskDesc, answer, criticResult));
+       const reflection = await callLLM(apiKey, model, 'You are a reflection engine.', 
+          REFLECTION_PROMPT(subtaskDesc, answer, criticResult), provider);
         logTrace('reflexion', `Reflexion-${workerName}`, `Reflection: ${reflection.substring(0, 100)}...`);
 
         attempts.push({ attempt: answer, reflection, success: false });
@@ -225,7 +230,7 @@ exports.handler = async (event, context) => {
       outputsText += `\n### Subtask: ${w.subtask}\n${w.output}\n`;
     }
     const judgeInput = `## Original Task:\n${task}\n\n## Worker Outputs (by subtask):\n${outputsText}\n\nSynthesize these into a final answer. Remember: unify, don't concatenate.`;
-    const finalAnswer = await callLLM(apiKey, model, JUDGE_PROMPT, judgeInput);
+    const finalAnswer = await callLLM(apiKey, model, JUDGE_PROMPT, judgeInput, provider);
     logTrace('success', 'Judge', `Synthesis complete (${finalAnswer.length} chars)`);
 
     const result = {

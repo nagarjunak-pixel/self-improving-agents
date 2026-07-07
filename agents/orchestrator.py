@@ -43,7 +43,7 @@ from typing import Optional
 
 from openai import OpenAI
 
-from core.agent import BaseAgent
+from core.agent import BaseAgent, create_client
 from core.memory import LongTermMemory
 from core.tools import ToolRegistry
 from core.reflexion import ReflexionEngine
@@ -64,16 +64,18 @@ class Orchestrator:
     def __init__(
         self,
         model: str = "gpt-4o",
-        tools: Optional[ToolRegistry] = None,
-        long_term_memory: Optional[LongTermMemory] = None,
+       tools: Optional[ToolRegistry] = None,
+       long_term_memory: Optional[LongTermMemory] = None,
         max_reflections: int = 2,
         client: Optional[OpenAI] = None,
+        api_key: str = None,
+        provider: str = "openai",
     ):
         self.model = model
         self.tools = tools or ToolRegistry()
         self.long_term_memory = long_term_memory or LongTermMemory()
         self.max_reflections = max_reflections
-        self.client = client or OpenAI()
+        self.client = client or create_client(api_key=api_key, provider=provider)
         self.trace = TraceLogger(agent_name="Orchestrator")
 
         # Create all agents
